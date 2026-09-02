@@ -12,7 +12,7 @@ dotenv.config(); // fallback
 
 export const config = {
   port: process.env.PORT || 5000,
-  clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+  clientUrl: process.env.CLIENT_URL || 'https://vista-holidays-frontend.vercel.app',
   nodeEnv: process.env.NODE_ENV || 'development',
   geminiApiKey: process.env.GEMINI_API_KEY || '',
   geminiModel: process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite',
