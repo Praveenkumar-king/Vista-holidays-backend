@@ -76,6 +76,12 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ['active', 'suspended', 'inactive'],
       default: 'active'
+    },
+    role: {
+      type: String,
+      enum: ['user', 'admin'],
+      default: 'user',
+      index: true
     }
   },
   {
@@ -99,6 +105,7 @@ userSchema.methods.toSafeObject = function () {
     name: this.name,
     email: this.email,
     mobile: this.mobile,
+    role: this.role || 'user',
     emailVerified: this.emailVerified,
     termsAccepted: this.termsAccepted,
     termsAcceptedAt: this.termsAcceptedAt,

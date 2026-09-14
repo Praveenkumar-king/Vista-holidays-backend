@@ -17,7 +17,9 @@ export const config = {
   mongodbUri: process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/vista_holidays',
   jwtSecret: process.env.JWT_SECRET || 'vista_holidays_secure_jwt_secret_dev_2026',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
-  adminNotificationEmail: process.env.ADMIN_NOTIFICATION_EMAIL || 'admin@vistaholidays.com',
+  adminEmail: process.env.ADMIN_EMAIL || 'no-reply-travelbooking@outlook.com',
+  adminPassword: process.env.ADMIN_PASSWORD || 'PKSecret@79798',
+  adminNotificationEmail: process.env.ADMIN_NOTIFICATION_EMAIL || 'no-reply-travelbooking@outlook.com',
   brevo: {
     host: process.env.BREVO_SMTP_HOST || 'smtp-relay.brevo.com',
     port: parseInt(process.env.BREVO_SMTP_PORT, 10) || 587,

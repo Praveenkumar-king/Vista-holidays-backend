@@ -105,5 +105,21 @@ export const optionalAuthenticate = async (req, res, next) => {
   }
 };
 
+/**
+ * Authorization middleware to ensure the authenticated user has admin role
+ */
+export const requireAdmin = (req, res, next) => {
+  if (!req.user) {
+    return errorResponse(res, 'Authentication required. Please log in as an administrator.', null, 401);
+  }
+
+  if (req.user.role !== 'admin') {
+    return errorResponse(res, 'Access denied. Administrator privileges required.', null, 403);
+  }
+
+  next();
+};
+
 export default authenticate;
+
 

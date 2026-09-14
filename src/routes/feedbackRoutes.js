@@ -8,18 +8,19 @@ import {
   deleteFeedbackMessage,
   deleteAllFeedbackMessages
 } from '../controllers/feedbackController.js';
+import { authenticate, requireAdmin } from '../middleware/authenticate.js';
 
 const router = Router();
 
 // Public submission
 router.post('/', submitFeedback);
 
-// Admin Directory & Detail APIs
-router.get('/', getFeedbackMessages);
-router.get('/:id', getFeedbackMessageById);
-router.patch('/:id/status', updateFeedbackStatus);
-router.post('/:id/messages', sendFeedbackAdminMessage);
-router.delete('/:id', deleteFeedbackMessage);
-router.delete('/', deleteAllFeedbackMessages);
+// Admin Directory & Detail APIs (Protected)
+router.get('/', authenticate, requireAdmin, getFeedbackMessages);
+router.get('/:id', authenticate, requireAdmin, getFeedbackMessageById);
+router.patch('/:id/status', authenticate, requireAdmin, updateFeedbackStatus);
+router.post('/:id/messages', authenticate, requireAdmin, sendFeedbackAdminMessage);
+router.delete('/:id', authenticate, requireAdmin, deleteFeedbackMessage);
+router.delete('/', authenticate, requireAdmin, deleteAllFeedbackMessages);
 
 export default router;

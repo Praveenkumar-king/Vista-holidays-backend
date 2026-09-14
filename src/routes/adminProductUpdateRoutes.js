@@ -10,8 +10,12 @@ import {
   deleteSlideImageHandler
 } from '../controllers/productUpdateController.js';
 import { uploadSlideImage } from '../middleware/uploadMiddleware.js';
+import { authenticate, requireAdmin } from '../middleware/authenticate.js';
 
 const router = Router();
+
+// Protect all admin product update routes
+router.use(authenticate, requireAdmin);
 
 // Admin Image Upload & Management (Cloudinary)
 router.post('/upload-image', uploadSlideImage, uploadSlideImageHandler);
