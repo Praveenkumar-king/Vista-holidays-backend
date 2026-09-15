@@ -89,7 +89,28 @@ const userSchema = new mongoose.Schema(
       enum: ['user', 'admin'],
       default: 'user',
       index: true
-    }
+    },
+    profileImage: {
+      url: {
+        type: String,
+        default: null
+      },
+      publicId: {
+        type: String,
+        default: null
+      }
+    },
+    savedDestinations: {
+      type: [String],
+      default: []
+    },
+    recentActivities: [
+      {
+        action: { type: String, required: true },
+        details: { type: String, default: '' },
+        timestamp: { type: Date, default: Date.now }
+      }
+    ]
   },
   {
     timestamps: true // Automatically manages createdAt and updatedAt
@@ -114,6 +135,9 @@ userSchema.methods.toSafeObject = function () {
     mobile: this.mobile,
     role: this.role || 'user',
     emailVerified: this.emailVerified,
+    profileImage: this.profileImage || { url: null, publicId: null },
+    savedDestinations: this.savedDestinations || [],
+    recentActivities: (this.recentActivities || []).slice(-10).reverse(),
     termsAccepted: this.termsAccepted,
     termsAcceptedAt: this.termsAcceptedAt,
     termsVersion: this.termsVersion,
@@ -129,6 +153,7 @@ userSchema.set('toJSON', {
   transform: (doc, ret) => {
     delete ret.passwordHash;
     delete ret.emailVerificationTokenHash;
+    delete ret.lastVerifiedTokenHash;
     delete ret.__v;
     ret.id = ret._id.toString();
     return ret;

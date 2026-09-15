@@ -32,7 +32,7 @@ const platformSettingSchema = new mongoose.Schema(
     },
     supportEmail: {
       type: String,
-      default: 'support@vistaholidays.com'
+      default: 'no-reply-travelbooking@outlook.com'
     },
     tagline: {
       type: String,
@@ -60,7 +60,7 @@ platformSettingSchema.statics.getSettings = async function () {
       maintenanceHeadline: 'Scheduled Maintenance in Progress',
       maintenanceMessage: 'Vista Holidays is currently undergoing scheduled platform maintenance. We will be back online shortly. Thank you for your patience.',
       brandName: 'Vista Holidays',
-      supportEmail: 'support@vistaholidays.com',
+      supportEmail: 'no-reply-travelbooking@outlook.com',
       tagline: 'Discover Extraordinary Journeys with AI Travel Intelligence'
     });
   }

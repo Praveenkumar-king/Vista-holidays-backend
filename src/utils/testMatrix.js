@@ -285,7 +285,37 @@ assert(verifyRazorpayWebhookSignature({ rawBody: mockPayload, signature: validWe
 assert(verifyRazorpayWebhookSignature({ rawBody: mockPayload, signature: 'invalid_sig' }) === false, 'Invalid Razorpay webhook signature correctly rejected');
 assert(verifyRazorpayWebhookSignature({ rawBody: '', signature: validWebhookSig }) === false, 'Empty webhook payload correctly rejected');
 
+// 16. User Profile Schema & Safe Serialization Validation
+import User from '../models/User.js';
+const testUser = new User({
+  name: 'Praveen Kumar',
+  email: 'praveen.test@vistaholidays.com',
+  passwordHash: 'hashed_secret_test_pw',
+  mobile: '+91 9876543210',
+  emailVerified: true,
+  profileImage: {
+    url: 'https://res.cloudinary.com/demo/image/upload/v12345/profile.jpg',
+    publicId: 'vista-holidays/user-profiles/sample'
+  },
+  savedDestinations: ['paris-classic', 'bali-luxury'],
+  recentActivities: [
+    { action: 'Account Created', details: 'Welcome to Vista Holidays' },
+    { action: 'Profile Updated', details: 'Added mobile number' }
+  ]
+});
+
+const safeUser = testUser.toSafeObject();
+assert(safeUser.name === 'Praveen Kumar', 'Safe user preserves full name');
+assert(safeUser.email === 'praveen.test@vistaholidays.com', 'Safe user preserves email');
+assert(safeUser.profileImage?.url === 'https://res.cloudinary.com/demo/image/upload/v12345/profile.jpg', 'Safe user preserves Cloudinary profileImage URL');
+assert(safeUser.profileImage?.publicId === 'vista-holidays/user-profiles/sample', 'Safe user preserves Cloudinary publicId');
+assert(safeUser.savedDestinations?.length === 2, 'Safe user preserves saved destinations count');
+assert(safeUser.recentActivities?.length === 2, 'Safe user preserves recent activities');
+assert(safeUser.passwordHash === undefined, 'Password hash is strictly excluded from safe user');
+assert(safeUser.emailVerificationTokenHash === undefined, 'Verification token hash is strictly excluded');
+
 console.log('====================================================');
 console.log(`TEST SUMMARY: ${passed} / ${total} TESTS PASSED`);
 console.log('====================================================');
+
 

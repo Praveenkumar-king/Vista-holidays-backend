@@ -19,6 +19,7 @@ import adminAnalyticsRoutes from './adminAnalyticsRoutes.js';
 import adminDashboardRoutes from './adminDashboardRoutes.js';
 import bookingRoutes from './bookingRoutes.js';
 import adminTransactionRoutes from './adminTransactionRoutes.js';
+import userRoutes from './userRoutes.js';
 
 const router = Router();
 
@@ -30,6 +31,10 @@ router.use('/platform', platformPublicRoutes);
 
 // Authentication routes
 router.use('/auth', authRoutes);
+
+// User Profile & Dashboard API
+router.use('/user', userRoutes);
+router.use('/users', userRoutes);
 
 // Support Ticket System: Contact & Feedback routes
 router.use('/contact', contactRoutes);
