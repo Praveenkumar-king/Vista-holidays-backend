@@ -15,3 +15,6 @@ export {
   buildContactAdminNotification,
   buildFeedbackAdminNotification
 } from './adminNotificationTemplate.js';
+export { buildBookingConfirmationEmail } from './bookingConfirmationTemplate.js';
+export { buildBookingAdminNotification } from './bookingAdminNotificationTemplate.js';
+

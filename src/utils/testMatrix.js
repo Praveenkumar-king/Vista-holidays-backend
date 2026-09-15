@@ -181,6 +181,111 @@ assert(FAQ_ITEMS.length === 36, 'Exactly 36 questions created (within 30-40 requ
 const categoriesCovered = new Set(FAQ_ITEMS.map(i => i.categoryId));
 assert(categoriesCovered.size === 12, 'All 12 topic categories are populated with questions');
 
+// 10. Booking Confirmation Email Template (Phase 10)
+const bookingEmail = templates.buildBookingConfirmationEmail({
+  toEmail: 'praveen@vistatest.com',
+  userName: 'Praveen',
+  bookingId: 'VISTA-BOOK-20260915-0001',
+  destinationName: 'Paris',
+  packageName: 'Standard Explorer',
+  stayDuration: 3,
+  members: 2,
+  pricePerDay: 5000,
+  subtotal: 30000,
+  tax: 0,
+  totalAmount: 30000,
+  paymentStatus: 'Paid',
+  razorpayPaymentId: 'pay_test123456789',
+  bookingDate: tMorning,
+  clientUrl: 'https://vistaholidays.com'
+});
+assert(bookingEmail.subject === 'Booking Confirmed - Praveen 🎉❤️', 'Booking confirmation subject format matches exact style');
+assert(bookingEmail.html.includes('BOOKING CONFIRMATION'), 'Booking confirmation email type badge is present');
+assert(bookingEmail.html.includes('VISTA-BOOK-20260915-0001'), 'Official Booking Reference ID is present');
+assert(bookingEmail.html.includes('Paris'), 'Destination name is present in booking email');
+assert(bookingEmail.html.includes('Standard Explorer'), 'Package name is present in booking email');
+assert(bookingEmail.html.includes('3 Days'), 'Stay duration is rendered');
+assert(bookingEmail.html.includes('2 Travelers'), 'Number of members is rendered');
+assert(bookingEmail.html.includes('₹5,000 / Day'), 'Price per day is formatted with rupee symbol');
+assert(bookingEmail.html.includes('₹30,000'), 'Total amount is formatted with rupee symbol');
+assert(bookingEmail.html.includes('View My Booking'), 'View My Booking primary CTA is present');
+assert(bookingEmail.html.includes('If the button is not working, copy this link'), 'Fallback copy/paste link is present');
+assert(bookingEmail.html.includes('pay_test123456789'), 'Razorpay Payment ID is rendered');
+assert(bookingEmail.html.includes('Security Notice'), 'Security Notice is present in booking email');
+assert(bookingEmail.html.includes('no-reply-travelbooking@outlook.com'), 'Need Help support email is present in booking email');
+assert(bookingEmail.html.includes('🌍 Travel. Discover. Experience.'), 'Brand tagline is present in booking email');
+assert(bookingEmail.html.includes('Thanks &amp; Regards'), 'Thanks & Regards is present in booking email');
+assert(bookingEmail.html.includes('Vista Holidays ❤️'), 'Vista Holidays ❤️ signature is present in booking email');
+
+// 11. Admin Booking Notification Email Template (Phase 11)
+const adminBooking = templates.buildBookingAdminNotification({
+  bookingId: 'VISTA-BOOK-20260915-0001',
+  userName: 'Praveen',
+  email: 'praveen@vistatest.com',
+  mobile: '+91 9876543210',
+  destinationName: 'Paris',
+  packageName: 'Standard Explorer',
+  pricePerDay: 5000,
+  days: 3,
+  members: 2,
+  subtotal: 30000,
+  tax: 0,
+  totalAmount: 30000,
+  paymentStatus: 'Paid',
+  razorpayOrderId: 'order_test987654',
+  razorpayPaymentId: 'pay_test123456789',
+  bookingDate: tMorning,
+  clientUrl: 'https://vistaholidays.com'
+});
+assert(adminBooking.subject === 'New Booking Confirmed | VISTA-BOOK-20260915-0001 | Paris | Praveen', 'Admin booking subject format is correct');
+assert(adminBooking.html.includes('ADMIN NOTIFICATION'), 'Admin notification badge is present');
+assert(adminBooking.html.includes('VISTA-BOOK-20260915-0001'), 'Booking ID is present in admin alert');
+assert(adminBooking.html.includes('Open Admin Transactions'), 'Open Admin Transactions CTA is present');
+
+// 12. Dynamic Pricing Engine Validation (Phase 4)
+import { calculateBookingPrice } from '../config/destinationPackages.js';
+const price1 = calculateBookingPrice({
+  destinationId: 'paris',
+  packageId: 'standard',
+  days: 3,
+  members: 2
+});
+assert(price1.pricePerDay === 5000, 'Paris standard price per day is ₹5,000');
+assert(price1.subtotal === 30000, 'Paris 3 days x 2 members subtotal is ₹30,000');
+assert(price1.totalAmount === 30000, 'Authoritative total amount matches calculation');
+
+const priceBoundaries = calculateBookingPrice({
+  destinationId: 'unknown-spot',
+  packageId: 'standard',
+  days: -10,
+  members: 0
+});
+assert(priceBoundaries.days === 1, 'Negative days safely clamped to minimum 1');
+assert(priceBoundaries.members === 1, 'Zero members safely clamped to minimum 1');
+assert(priceBoundaries.totalAmount === 5000, 'Safe minimum total calculated');
+
+// 13. Sequential Booking ID Generator Validation (Phase 7)
+import BookingCounter from '../models/BookingCounter.js';
+const generatedBookingId1 = await BookingCounter.getNextBookingId();
+const generatedBookingId2 = await BookingCounter.getNextBookingId();
+assert(/^VISTA-BOOK-\d{8}-\d{4}$/.test(generatedBookingId1), `Booking ID format matches VISTA-BOOK-YYYYMMDD-0001 (${generatedBookingId1})`);
+assert(/^VISTA-BOOK-\d{8}-\d{4}$/.test(generatedBookingId2), `Second Booking ID format matches VISTA-BOOK-YYYYMMDD-0002 (${generatedBookingId2})`);
+assert(generatedBookingId1 !== generatedBookingId2, 'Consecutive booking IDs are unique and incrementing');
+
+// 14. Razorpay Signature Verification Logic (Phase 6)
+import { verifyRazorpaySignature, verifyRazorpayWebhookSignature } from '../services/razorpayService.js';
+assert(verifyRazorpaySignature({ orderId: 'order_sim_123', paymentId: 'pay_sim_456' }) === true, 'Simulated Razorpay orders verify cleanly in dev');
+assert(verifyRazorpaySignature({ orderId: '', paymentId: 'pay_sim_456' }) === false, 'Missing orderId fails signature check');
+
+// 15. Razorpay Webhook Signature Verification Logic
+import crypto from 'crypto';
+const mockPayload = JSON.stringify({ event: 'payment.captured' });
+const validWebhookSig = crypto.createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET || 'pknotes4548').update(mockPayload).digest('hex');
+assert(verifyRazorpayWebhookSignature({ rawBody: mockPayload, signature: validWebhookSig }) === true, 'Valid Razorpay webhook signature verifies successfully');
+assert(verifyRazorpayWebhookSignature({ rawBody: mockPayload, signature: 'invalid_sig' }) === false, 'Invalid Razorpay webhook signature correctly rejected');
+assert(verifyRazorpayWebhookSignature({ rawBody: '', signature: validWebhookSig }) === false, 'Empty webhook payload correctly rejected');
+
 console.log('====================================================');
 console.log(`TEST SUMMARY: ${passed} / ${total} TESTS PASSED`);
 console.log('====================================================');
+

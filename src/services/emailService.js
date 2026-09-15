@@ -18,7 +18,9 @@ import {
   buildTicketUpdateEmail,
   buildTicketStatusChangeEmail,
   buildContactAdminNotification,
-  buildFeedbackAdminNotification
+  buildFeedbackAdminNotification,
+  buildBookingConfirmationEmail,
+  buildBookingAdminNotification
 } from './emails/templates/index.js';
 
 let transporter = null;
@@ -354,6 +356,110 @@ export const sendAdminFeedbackNotification = async ({
 // Backwards compatibility alias
 export const sendFeedbackAdminNotification = sendAdminFeedbackNotification;
 
+/**
+ * FEATURE: Send user booking confirmation email
+ */
+export const sendBookingConfirmationEmail = async ({
+  toEmail,
+  userName,
+  bookingId,
+  destinationName,
+  packageName,
+  stayDuration,
+  members,
+  pricePerDay,
+  subtotal,
+  tax = 0,
+  totalAmount,
+  paymentStatus = 'Paid',
+  razorpayPaymentId = '',
+  bookingDate = new Date()
+}) => {
+  const clientUrl = getPrimaryClientUrl();
+  const { subject, html, text } = buildBookingConfirmationEmail({
+    toEmail,
+    userName,
+    bookingId,
+    destinationName,
+    packageName,
+    stayDuration,
+    members,
+    pricePerDay,
+    subtotal,
+    tax,
+    totalAmount,
+    paymentStatus,
+    razorpayPaymentId,
+    bookingDate,
+    clientUrl
+  });
+
+  return deliverMail({
+    to: toEmail,
+    subject,
+    html,
+    text,
+    logCategory: 'BOOKING_USER_CONFIRMATION'
+  });
+};
+
+/**
+ * FEATURE: Send admin notification for confirmed booking
+ */
+export const sendAdminBookingNotification = async ({
+  bookingId,
+  userName,
+  email,
+  mobile,
+  destinationName,
+  packageName,
+  pricePerDay,
+  days,
+  members,
+  subtotal,
+  tax = 0,
+  totalAmount,
+  paymentStatus = 'Paid',
+  razorpayOrderId = '',
+  razorpayPaymentId = '',
+  bookingDate = new Date()
+}) => {
+  const adminEmail = config.adminNotificationEmail || config.brevo.fromEmail;
+  if (!adminEmail) {
+    logger.warn('Admin notification email not configured, skipping booking alert.');
+    return { sent: false, skipped: true };
+  }
+
+  const clientUrl = getPrimaryClientUrl();
+  const { subject, html, text } = buildBookingAdminNotification({
+    bookingId,
+    userName,
+    email,
+    mobile,
+    destinationName,
+    packageName,
+    pricePerDay,
+    days,
+    members,
+    subtotal,
+    tax,
+    totalAmount,
+    paymentStatus,
+    razorpayOrderId,
+    razorpayPaymentId,
+    bookingDate,
+    clientUrl
+  });
+
+  return deliverMail({
+    to: adminEmail,
+    subject,
+    html,
+    text,
+    logCategory: 'BOOKING_ADMIN_ALERT'
+  });
+};
+
 export default {
   sendVerificationEmail,
   sendWelcomeEmail,
@@ -366,5 +472,8 @@ export default {
   sendAdminContactNotification,
   sendContactAdminNotification,
   sendAdminFeedbackNotification,
-  sendFeedbackAdminNotification
+  sendFeedbackAdminNotification,
+  sendBookingConfirmationEmail,
+  sendAdminBookingNotification
 };
+

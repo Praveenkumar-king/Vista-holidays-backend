@@ -46,11 +46,18 @@ const userSchema = new mongoose.Schema(
     emailVerificationTokenHash: {
       type: String,
       default: null,
-      select: false
+      select: false,
+      index: true
     },
     emailVerificationExpiresAt: {
       type: Date,
       default: null
+    },
+    lastVerifiedTokenHash: {
+      type: String,
+      default: null,
+      select: false,
+      index: true
     },
     welcomeEmailSent: {
       type: Boolean,

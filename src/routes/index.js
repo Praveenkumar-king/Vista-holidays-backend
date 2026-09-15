@@ -17,6 +17,8 @@ import adminSettingsRoutes from './adminSettingsRoutes.js';
 import platformPublicRoutes from './platformPublicRoutes.js';
 import adminAnalyticsRoutes from './adminAnalyticsRoutes.js';
 import adminDashboardRoutes from './adminDashboardRoutes.js';
+import bookingRoutes from './bookingRoutes.js';
+import adminTransactionRoutes from './adminTransactionRoutes.js';
 
 const router = Router();
 
@@ -39,6 +41,9 @@ router.use('/admin/product-updates', adminProductUpdateRoutes);
 router.use('/admin/whats-new', adminProductUpdateRoutes);
 router.use('/product-updates', productUpdateRoutes);
 
+// Bookings & Reservation API
+router.use('/bookings', bookingRoutes);
+
 // Admin Control Center modules
 router.use('/admin/dashboard', adminDashboardRoutes);
 router.use('/admin/users', adminUserRoutes);
@@ -47,6 +52,7 @@ router.use('/admin/announcements', adminAnnouncementRoutes);
 router.use('/admin/settings', adminSettingsRoutes);
 router.use('/admin/maintenance', adminSettingsRoutes);
 router.use('/admin/analytics', adminAnalyticsRoutes);
+router.use('/admin/transactions', adminTransactionRoutes);
 
 // Public Announcements
 router.use('/announcements', announcementRoutes);

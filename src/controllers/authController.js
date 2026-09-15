@@ -191,6 +191,26 @@ export const verifyEmail = async (req, res) => {
     }).select('+emailVerificationTokenHash');
 
     if (!user) {
+      // Check if this exact token was already used successfully to verify an account
+      const alreadyVerifiedUser = await User.findOne({
+        lastVerifiedTokenHash: incomingTokenHash
+      });
+
+      if (alreadyVerifiedUser) {
+        logger.info(`Verification link re-accessed for already verified user: ${alreadyVerifiedUser.email}`);
+        return res.status(200).json({
+          success: true,
+          alreadyVerified: true,
+          message: 'Your email has already been verified. You can sign in to your account.',
+          data: {
+            email: alreadyVerifiedUser.email,
+            name: alreadyVerifiedUser.name,
+            emailVerified: true,
+            alreadyVerified: true
+          }
+        });
+      }
+
       return res.status(400).json({
         success: false,
         code: 'INVALID_TOKEN',
@@ -208,8 +228,9 @@ export const verifyEmail = async (req, res) => {
       });
     }
 
-    // Activate the account and invalidate the token (single-use)
+    // Activate the account, record last verified token hash, and invalidate the token (single-use)
     user.emailVerified = true;
+    user.lastVerifiedTokenHash = incomingTokenHash;
     user.emailVerificationTokenHash = null;
     user.emailVerificationExpiresAt = null;
 
