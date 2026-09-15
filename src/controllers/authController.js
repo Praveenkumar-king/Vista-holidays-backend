@@ -1,4 +1,5 @@
 import User from '../models/User.js';
+import PlatformSetting from '../models/PlatformSetting.js';
 import { 
   generateVerificationToken, 
   hashVerificationToken, 
@@ -35,6 +36,16 @@ export const register = async (req, res) => {
   try {
     if (!isDatabaseConnected()) {
       return errorResponse(res, 'Database service is currently unavailable. Please try again later.', null, 503);
+    }
+
+    // Enforce Maintenance Mode: block regular registrations
+    const platformSettings = await PlatformSetting.getSettings();
+    if (platformSettings.maintenanceMode) {
+      return res.status(503).json({
+        success: false,
+        code: 'MAINTENANCE_MODE',
+        message: platformSettings.maintenanceMessage || 'System under maintenance. User registration is temporarily paused. Please check the platform notification bar for updates.'
+      });
     }
 
     const { name, email, password, mobile, termsAccepted } = req.body;
@@ -333,6 +344,16 @@ export const login = async (req, res) => {
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return errorResponse(res, 'Invalid email or password.', null, 401);
+    }
+
+    // Enforce Maintenance Mode: allow administrators, block normal users
+    const platformSettings = await PlatformSetting.getSettings();
+    if (platformSettings.maintenanceMode && user.role !== 'admin') {
+      return res.status(503).json({
+        success: false,
+        code: 'MAINTENANCE_MODE',
+        message: platformSettings.maintenanceMessage || 'System under maintenance. Normal user login is temporarily disabled. Please check the platform notification bar for updates.'
+      });
     }
 
     // Check email verification status

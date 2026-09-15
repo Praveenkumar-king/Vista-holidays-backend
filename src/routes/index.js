@@ -9,11 +9,22 @@ import feedbackRoutes from './feedbackRoutes.js';
 import ticketRoutes from './ticketRoutes.js';
 import adminProductUpdateRoutes from './adminProductUpdateRoutes.js';
 import productUpdateRoutes from './productUpdateRoutes.js';
+import adminUserRoutes from './adminUserRoutes.js';
+import adminTicketRoutes from './adminTicketRoutes.js';
+import adminAnnouncementRoutes from './adminAnnouncementRoutes.js';
+import announcementRoutes from './announcementRoutes.js';
+import adminSettingsRoutes from './adminSettingsRoutes.js';
+import platformPublicRoutes from './platformPublicRoutes.js';
+import adminAnalyticsRoutes from './adminAnalyticsRoutes.js';
+import adminDashboardRoutes from './adminDashboardRoutes.js';
 
 const router = Router();
 
 // Health check route
 router.use('/health', healthRoutes);
+
+// Public Platform Status (maintenance mode & brand info)
+router.use('/platform', platformPublicRoutes);
 
 // Authentication routes
 router.use('/auth', authRoutes);
@@ -27,6 +38,18 @@ router.use('/tickets', ticketRoutes);
 router.use('/admin/product-updates', adminProductUpdateRoutes);
 router.use('/admin/whats-new', adminProductUpdateRoutes);
 router.use('/product-updates', productUpdateRoutes);
+
+// Admin Control Center modules
+router.use('/admin/dashboard', adminDashboardRoutes);
+router.use('/admin/users', adminUserRoutes);
+router.use('/admin/tickets', adminTicketRoutes);
+router.use('/admin/announcements', adminAnnouncementRoutes);
+router.use('/admin/settings', adminSettingsRoutes);
+router.use('/admin/maintenance', adminSettingsRoutes);
+router.use('/admin/analytics', adminAnalyticsRoutes);
+
+// Public Announcements
+router.use('/announcements', announcementRoutes);
 
 // Weather API routes
 router.use('/weather', weatherRoutes);
