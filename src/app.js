@@ -9,11 +9,12 @@ import { errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
 
-// Parse configured allowed origins and normalize (strip trailing slash)
-const allowedOrigins = (config.clientUrl || 'https://vista-holidays-frontend.vercel.app')
-  .split(',')
-  .map((origin) => origin.trim().replace(/\/+$/, ''))
-  .filter(Boolean);
+// Strict allowlist: ONLY exact approved frontend origins
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'https://vista-holidays-frontend.vercel.app'
+];
 
 // CORS configuration with credentials support for cookies
 app.use(cors({
@@ -23,20 +24,15 @@ app.use(cors({
 
     const normalizedOrigin = origin.replace(/\/+$/, '');
 
-    // Allow explicitly configured origins
+    // Allow strictly approved origins only (exact match)
     if (allowedOrigins.includes(normalizedOrigin)) {
-      return callback(null, true);
-    }
-
-    // In non-production environments, allow localhost / 127.0.0.1
-    if (config.nodeEnv !== 'production' && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(normalizedOrigin)) {
       return callback(null, true);
     }
 
     return callback(new Error(`CORS policy: Access denied for origin '${origin}'.`));
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
 

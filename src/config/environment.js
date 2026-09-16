@@ -12,7 +12,7 @@ dotenv.config(); // fallback
 
 export const config = {
   port: parseInt(process.env.PORT, 10) || 5000,
-  clientUrl: process.env.CLIENT_URL || 'http://localhost:5173,https://vista-holidays-frontend.vercel.app',
+  clientUrl: process.env.CLIENT_URL || 'http://localhost:5173,http://127.0.0.1:5173,https://vista-holidays-frontend.vercel.app',
   nodeEnv: process.env.NODE_ENV || 'development',
   mongodbUri: process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/vista_holidays',
   jwtSecret: process.env.JWT_SECRET || 'vista_holidays_secure_jwt_secret_dev_2026',
