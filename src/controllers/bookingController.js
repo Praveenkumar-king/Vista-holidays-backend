@@ -34,6 +34,8 @@ export const createCheckoutOrder = async (req, res) => {
     const {
       destinationId,
       destinationName,
+      country,
+      checkInDate,
       packageId = 'standard',
       days = 1,
       members = 1,
@@ -93,6 +95,8 @@ export const createCheckoutOrder = async (req, res) => {
       mobile: userMobile,
       destinationId: destinationId.trim(),
       destinationName: destinationName || destinationId,
+      country: country ? String(country).trim() : '',
+      checkInDate: checkInDate ? new Date(checkInDate) : null,
       packageId: pricing.packageId,
       packageName: pricing.packageName,
       pricePerDay: pricing.pricePerDay,
@@ -125,6 +129,8 @@ export const createCheckoutOrder = async (req, res) => {
       totalAmount: pricing.totalAmount,
       packageName: pricing.packageName,
       destinationName: destinationName || destinationId,
+      country: booking.country,
+      checkInDate: booking.checkInDate,
       isSimulated: rzpOrder.isSimulated || false
     }, 201);
   } catch (error) {
@@ -201,6 +207,8 @@ export const verifyPayment = async (req, res) => {
       userName: booking.userName,
       email: booking.email,
       destination: booking.destinationName,
+      country: booking.country,
+      checkInDate: booking.checkInDate,
       package: booking.packageName,
       days: booking.days,
       members: booking.members,
@@ -223,7 +231,9 @@ export const verifyPayment = async (req, res) => {
         userName: booking.userName,
         bookingId: booking.bookingId,
         destinationName: booking.destinationName,
+        country: booking.country,
         packageName: booking.packageName,
+        checkInDate: booking.checkInDate,
         stayDuration: booking.days,
         members: booking.members,
         pricePerDay: booking.pricePerDay,
@@ -247,8 +257,10 @@ export const verifyPayment = async (req, res) => {
         email: booking.email,
         mobile: booking.mobile,
         destinationName: booking.destinationName,
+        country: booking.country,
         packageName: booking.packageName,
         pricePerDay: booking.pricePerDay,
+        checkInDate: booking.checkInDate,
         days: booking.days,
         members: booking.members,
         subtotal: booking.subtotal,
@@ -398,6 +410,8 @@ export const handleRazorpayWebhook = async (req, res) => {
           userName: booking.userName,
           email: booking.email,
           destination: booking.destinationName,
+          country: booking.country,
+          checkInDate: booking.checkInDate,
           package: booking.packageName,
           days: booking.days,
           members: booking.members,
@@ -411,6 +425,8 @@ export const handleRazorpayWebhook = async (req, res) => {
         await transaction.save();
       } else if (transaction.paymentStatus !== 'paid') {
         transaction.paymentStatus = 'paid';
+        if (booking.country) transaction.country = booking.country;
+        if (booking.checkInDate) transaction.checkInDate = booking.checkInDate;
         if (razorpayPaymentId) transaction.razorpayPaymentId = razorpayPaymentId;
         await transaction.save();
       }
@@ -422,7 +438,9 @@ export const handleRazorpayWebhook = async (req, res) => {
           userName: booking.userName,
           bookingId: booking.bookingId,
           destinationName: booking.destinationName,
+          country: booking.country,
           packageName: booking.packageName,
+          checkInDate: booking.checkInDate,
           stayDuration: booking.days,
           members: booking.members,
           pricePerDay: booking.pricePerDay,

@@ -15,7 +15,9 @@ export const buildBookingAdminNotification = ({
   email,
   mobile,
   destinationName,
+  country = '',
   packageName,
+  checkInDate = null,
   pricePerDay,
   days,
   members,
@@ -35,6 +37,9 @@ export const buildBookingAdminNotification = ({
   const safeClientUrl = (clientUrl || 'http://localhost:5173').replace(/\/+$/, '');
   const adminUrl = `${safeClientUrl}/admin/transactions`;
   const formattedDate = formatISTDateTime(bookingDate);
+  const formattedCheckIn = checkInDate
+    ? new Date(checkInDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '';
 
   const formattedPricePerDay = `₹${Number(pricePerDay).toLocaleString('en-IN')}`;
   const formattedSubtotal = `₹${Number(subtotal).toLocaleString('en-IN')}`;
@@ -79,12 +84,20 @@ export const buildBookingAdminNotification = ({
       </tr>
       <tr style="border-bottom: 1px solid #f1f5f9;">
         <td style="padding: 10px 12px; font-weight: 700; color: #475569;">Destination</td>
-        <td style="padding: 10px 12px; color: #0f172a; font-weight: 700;">${escapeHtml(destinationName)}</td>
+        <td style="padding: 10px 12px; color: #0f172a; font-weight: 700;">${escapeHtml(destinationName)}${country ? `, ${escapeHtml(country)}` : ''}</td>
       </tr>
       <tr style="border-bottom: 1px solid #f1f5f9;">
         <td style="padding: 10px 12px; font-weight: 700; color: #475569;">Package</td>
         <td style="padding: 10px 12px; color: #0284c7; font-weight: 700;">${escapeHtml(packageName)}</td>
       </tr>
+      ${
+        formattedCheckIn
+          ? `<tr style="border-bottom: 1px solid #f1f5f9;">
+              <td style="padding: 10px 12px; font-weight: 700; color: #475569;">Check-in Date</td>
+              <td style="padding: 10px 12px; color: #0f172a; font-weight: 700;">${escapeHtml(formattedCheckIn)}</td>
+            </tr>`
+          : ''
+      }
       <tr style="border-bottom: 1px solid #f1f5f9;">
         <td style="padding: 10px 12px; font-weight: 700; color: #475569;">Stay Duration</td>
         <td style="padding: 10px 12px; color: #0f172a;">${escapeHtml(days)} Day${Number(days) === 1 ? '' : 's'}</td>
@@ -158,11 +171,11 @@ Booking ID: ${bookingId}
 User Name: ${safeName}
 Email: ${email}
 Mobile: ${mobile || 'N/A'}
-Destination: ${destinationName}
+Destination: ${destinationName}${country ? `, ${country}` : ''}
 Package: ${packageName}
-Price Per Day: ${formattedPricePerDay}
-Days: ${days}
-Members: ${members}
+${formattedCheckIn ? `Check-in Date: ${formattedCheckIn}\n` : ''}Price Per Day: ${formattedPricePerDay}
+Days: ${days} Day${Number(days) === 1 ? '' : 's'}
+Members: ${members} Traveler${Number(members) === 1 ? '' : 's'}
 Subtotal: ${formattedSubtotal}
 Taxes/Fees: ${formattedTax}
 Total Amount: ${formattedTotal}

@@ -43,6 +43,15 @@ const bookingSchema = new mongoose.Schema(
       required: true,
       trim: true
     },
+    country: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    checkInDate: {
+      type: Date,
+      default: null
+    },
     packageId: {
       type: String,
       required: true,

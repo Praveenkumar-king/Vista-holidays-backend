@@ -14,7 +14,9 @@ export const buildBookingConfirmationEmail = ({
   userName,
   bookingId,
   destinationName,
+  country = '',
   packageName,
+  checkInDate = null,
   stayDuration,
   members,
   pricePerDay,
@@ -34,6 +36,9 @@ export const buildBookingConfirmationEmail = ({
   const safeClientUrl = (clientUrl || 'http://localhost:5173').replace(/\/+$/, '');
   const dynamicBookingUrl = `${safeClientUrl}/users/bookings?id=${encodeURIComponent(bookingId)}`;
   const formattedDate = formatISTDateTime(bookingDate);
+  const formattedCheckIn = checkInDate
+    ? new Date(checkInDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '';
 
   const formattedPricePerDay = `₹${Number(pricePerDay).toLocaleString('en-IN')}`;
   const formattedSubtotal = `₹${Number(subtotal).toLocaleString('en-IN')}`;
@@ -78,12 +83,20 @@ export const buildBookingConfirmationEmail = ({
     <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse; margin-bottom: 24px; font-size: 14px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
       <tr style="border-bottom: 1px solid #f1f5f9;">
         <td style="padding: 11px 16px; font-weight: 600; color: #64748b; width: 42%;">Destination</td>
-        <td style="padding: 11px 16px; color: #0f172a; font-weight: 800;">${escapeHtml(destinationName)}</td>
+        <td style="padding: 11px 16px; color: #0f172a; font-weight: 800;">${escapeHtml(destinationName)}${country ? `, ${escapeHtml(country)}` : ''}</td>
       </tr>
       <tr style="border-bottom: 1px solid #f1f5f9;">
         <td style="padding: 11px 16px; font-weight: 600; color: #64748b;">Package Selected</td>
         <td style="padding: 11px 16px; color: #0284c7; font-weight: 700;">${escapeHtml(packageName)}</td>
       </tr>
+      ${
+        formattedCheckIn
+          ? `<tr style="border-bottom: 1px solid #f1f5f9;">
+              <td style="padding: 11px 16px; font-weight: 600; color: #64748b;">Check-in Date</td>
+              <td style="padding: 11px 16px; color: #0f172a; font-weight: 700;">${escapeHtml(formattedCheckIn)}</td>
+            </tr>`
+          : ''
+      }
       <tr style="border-bottom: 1px solid #f1f5f9;">
         <td style="padding: 11px 16px; font-weight: 600; color: #64748b;">Stay Duration</td>
         <td style="padding: 11px 16px; color: #0f172a; font-weight: 700;">${escapeHtml(stayDuration)} Day${Number(stayDuration) === 1 ? '' : 's'}</td>
@@ -153,10 +166,10 @@ Booking Confirmed 🎉
 Your journey with Vista Holidays has been successfully booked and paid!
 
 Booking ID: ${bookingId}
-Destination: ${destinationName}
+Destination: ${destinationName}${country ? `, ${country}` : ''}
 Package: ${packageName}
-Stay Duration: ${stayDuration} Days
-Members: ${members} Travelers
+${formattedCheckIn ? `Check-in Date: ${formattedCheckIn}\n` : ''}Stay Duration: ${stayDuration} Day${Number(stayDuration) === 1 ? '' : 's'}
+Members: ${members} Traveler${Number(members) === 1 ? '' : 's'}
 Price Per Day: ${formattedPricePerDay}
 Subtotal: ${formattedSubtotal}
 Taxes/Fees: ${formattedTax}

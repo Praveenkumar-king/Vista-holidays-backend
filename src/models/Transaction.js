@@ -38,6 +38,15 @@ const transactionSchema = new mongoose.Schema(
       required: true,
       trim: true
     },
+    country: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    checkInDate: {
+      type: Date,
+      default: null
+    },
     package: {
       type: String,
       required: true,
