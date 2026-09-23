@@ -16,6 +16,7 @@ import {
   verifyRazorpayWebhookSignature
 } from '../services/razorpayService.js';
 import emailService from '../services/emailService.js';
+import invoiceService from '../services/invoiceService.js';
 import logger from '../utils/logger.js';
 import config from '../config/environment.js';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
@@ -223,7 +224,24 @@ export const verifyPayment = async (req, res) => {
     await transaction.save();
     logger.info(`Transaction ${transactionId} recorded for booking ${booking.bookingId}`);
 
-    // Send Booking Confirmation Email to User (Feature 10)
+    // Generate or retrieve authoritative Invoice (Feature: Complete Invoice System)
+    let invoiceData = null;
+    try {
+      invoiceData = await invoiceService.getOrCreateInvoiceForBooking(booking, { transactionId });
+    } catch (invoiceErr) {
+      logger.error(`Invoice processing failed for booking ${booking.bookingId}:`, invoiceErr.message);
+    }
+
+    const emailAttachments = [];
+    if (invoiceData?.pdfBuffer && invoiceData?.invoice?.invoiceNumber) {
+      emailAttachments.push({
+        filename: `Vista-Holidays-Invoice-${invoiceData.invoice.invoiceNumber}.pdf`,
+        content: invoiceData.pdfBuffer,
+        contentType: 'application/pdf'
+      });
+    }
+
+    // Send Booking Confirmation Email to User with Invoice attached
     let userEmailFailed = false;
     try {
       await emailService.sendBookingConfirmationEmail({
@@ -242,7 +260,8 @@ export const verifyPayment = async (req, res) => {
         totalAmount: booking.totalAmount,
         paymentStatus: 'Paid',
         razorpayPaymentId,
-        bookingDate: booking.createdAt
+        bookingDate: booking.createdAt,
+        attachments: emailAttachments
       });
     } catch (emailErr) {
       userEmailFailed = true;
@@ -431,8 +450,24 @@ export const handleRazorpayWebhook = async (req, res) => {
         await transaction.save();
       }
 
-      // Asynchronously send emails without blocking webhook response
+      // Asynchronously send emails with attached invoice without blocking webhook response
       try {
+        let webhookInvoiceData = null;
+        try {
+          webhookInvoiceData = await invoiceService.getOrCreateInvoiceForBooking(booking);
+        } catch (invErr) {
+          logger.error(`Webhook: Invoice generation failed for ${booking.bookingId}:`, invErr.message);
+        }
+
+        const webhookAttachments = [];
+        if (webhookInvoiceData?.pdfBuffer && webhookInvoiceData?.invoice?.invoiceNumber) {
+          webhookAttachments.push({
+            filename: `Vista-Holidays-Invoice-${webhookInvoiceData.invoice.invoiceNumber}.pdf`,
+            content: webhookInvoiceData.pdfBuffer,
+            contentType: 'application/pdf'
+          });
+        }
+
         await emailService.sendBookingConfirmationEmail({
           toEmail: booking.email,
           userName: booking.userName,
@@ -449,7 +484,8 @@ export const handleRazorpayWebhook = async (req, res) => {
           totalAmount: booking.totalAmount,
           paymentStatus: 'Paid',
           razorpayPaymentId: razorpayPaymentId || booking.razorpayOrderId,
-          bookingUrl: `${config.clientUrl?.split(',')[0] || 'https://vista-holidays-frontend.vercel.app'}/users/bookings`
+          bookingUrl: `${config.clientUrl?.split(',')[0] || 'https://vista-holidays-frontend.vercel.app'}/users/bookings`,
+          attachments: webhookAttachments
         });
       } catch (err) {
         logger.error('Webhook confirmation email failed:', err.message);
@@ -478,11 +514,70 @@ export const handleRazorpayWebhook = async (req, res) => {
   }
 };
 
+/**
+ * 6. Secure Invoice Download
+ * GET /api/bookings/:bookingId/invoice
+ * 
+ * Authenticates user, verifies ownership or admin role, checks booking eligibility,
+ * retrieves/creates authoritative invoice, and streams stored PDF.
+ */
+export const downloadInvoice = async (req, res) => {
+  try {
+    if (!isDatabaseConnected()) {
+      return errorResponse(res, 'Database service is currently unavailable. Please try again later.', null, 503);
+    }
+
+    const { bookingId } = req.params;
+    if (!bookingId || typeof bookingId !== 'string' || !bookingId.trim()) {
+      return errorResponse(res, 'A valid booking ID is required.', null, 400);
+    }
+
+    const booking = await Booking.findOne({ bookingId: bookingId.trim() });
+    if (!booking) {
+      return errorResponse(res, 'Booking reference not found.', null, 404);
+    }
+
+    // Protection: User can only download their own invoice, unless admin
+    if (booking.userId.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      logger.warn(`Unauthorized invoice download attempt for booking ${booking.bookingId} by user ${req.user._id}`);
+      return errorResponse(res, 'You are not authorized to download this invoice.', null, 403);
+    }
+
+    // Eligibility check: Only paid and confirmed bookings receive an invoice
+    if (booking.bookingStatus !== 'confirmed' || booking.paymentStatus !== 'paid') {
+      return errorResponse(res, 'Invoice is only available for confirmed and paid bookings.', null, 400);
+    }
+
+    // Retrieve or create authoritative invoice (Idempotent)
+    const invoiceResult = await invoiceService.getOrCreateInvoiceForBooking(booking);
+    const invoice = invoiceResult.invoice;
+    const pdfBuffer = invoiceResult.pdfBuffer;
+
+    if (!pdfBuffer || !Buffer.isBuffer(pdfBuffer)) {
+      return errorResponse(res, 'Unable to retrieve invoice PDF document.', null, 500);
+    }
+
+    const filename = `Vista-Holidays-Invoice-${invoice.invoiceNumber}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+
+    return res.status(200).send(pdfBuffer);
+  } catch (error) {
+    logger.error('Download invoice error:', error.message);
+    return errorResponse(res, 'Unable to download invoice. Please try again later.', error.message, 500);
+  }
+};
+
 export default {
   createCheckoutOrder,
   verifyPayment,
   getMyBookings,
   getBookingById,
-  handleRazorpayWebhook
+  handleRazorpayWebhook,
+  downloadInvoice
 };
+
 

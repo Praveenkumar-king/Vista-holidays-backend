@@ -128,6 +128,15 @@ const bookingSchema = new mongoose.Schema(
     notes: {
       type: String,
       default: ''
+    },
+    invoiceNumber: {
+      type: String,
+      default: null,
+      index: true
+    },
+    invoicePdfUrl: {
+      type: String,
+      default: null
     }
   },
   {

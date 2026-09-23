@@ -57,13 +57,16 @@ const getTransporter = () => {
 /**
  * Generic internal sender with dev fallback simulation
  */
-const deliverMail = async ({ to, subject, html, text, logCategory = 'EMAIL' }) => {
+const deliverMail = async ({ to, subject, html, text, logCategory = 'EMAIL', attachments = [] }) => {
   const mailTransporter = getTransporter();
 
   if (!mailTransporter) {
     logger.warn('------------------------------------------------------------');
     logger.warn(`[DEV SIMULATION ${logCategory}] To: ${to}`);
     logger.warn(`[DEV SIMULATION] Subject: ${subject}`);
+    if (attachments && attachments.length > 0) {
+      logger.warn(`[DEV SIMULATION] Attachments: ${attachments.map(a => a.filename).join(', ')}`);
+    }
     logger.warn(`[DEV SIMULATION] Content excerpt: ${text ? text.substring(0, 200) : ''}...`);
     logger.warn('Configure BREVO_SMTP_USER and BREVO_SMTP_PASSWORD in server/.env for live delivery.');
     logger.warn('------------------------------------------------------------');
@@ -78,7 +81,8 @@ const deliverMail = async ({ to, subject, html, text, logCategory = 'EMAIL' }) =
       to,
       subject,
       text,
-      html
+      html,
+      attachments
     });
     logger.info(`[${logCategory}] Sent successfully to ${to}: ${info.messageId}`);
     return { sent: true, messageId: info.messageId };
@@ -375,7 +379,8 @@ export const sendBookingConfirmationEmail = async ({
   totalAmount,
   paymentStatus = 'Paid',
   razorpayPaymentId = '',
-  bookingDate = new Date()
+  bookingDate = new Date(),
+  attachments = []
 }) => {
   const clientUrl = getPrimaryClientUrl();
   const { subject, html, text } = buildBookingConfirmationEmail({
@@ -403,6 +408,7 @@ export const sendBookingConfirmationEmail = async ({
     subject,
     html,
     text,
+    attachments,
     logCategory: 'BOOKING_USER_CONFIRMATION'
   });
 };

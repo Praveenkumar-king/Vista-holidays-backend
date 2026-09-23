@@ -4,7 +4,8 @@ import {
   verifyPayment,
   getMyBookings,
   getBookingById,
-  handleRazorpayWebhook
+  handleRazorpayWebhook,
+  downloadInvoice
 } from '../controllers/bookingController.js';
 import { authenticate } from '../middleware/authenticate.js';
 
@@ -27,5 +28,8 @@ router.get('/my', getMyBookings);
 
 // 4. Get specific booking details
 router.get('/:bookingId', getBookingById);
+
+// 5. Download secure stored invoice PDF
+router.get('/:bookingId/invoice', downloadInvoice);
 
 export default router;

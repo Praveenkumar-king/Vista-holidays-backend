@@ -80,6 +80,59 @@ export const uploadImageBuffer = (buffer, customFolder = null) => {
 };
 
 /**
+ * Upload an invoice PDF buffer directly to Cloudinary using upload_stream
+ * @param {Buffer} buffer - Generated PDF buffer
+ * @param {string} filename - Filename identifier e.g. Vista-Holidays-Invoice-VISTA-INV-20260924-0001
+ * @param {string} [customFolder] - Destination Cloudinary folder (default: 'vista-holidays/invoices')
+ * @returns {Promise<{ secureUrl: string, publicId: string, bytes: number }>}
+ */
+export const uploadPdfBuffer = (buffer, filename, customFolder = 'vista-holidays/invoices') => {
+  return new Promise((resolve, reject) => {
+    if (!isCloudinaryConfigured()) {
+      return reject(
+        new Error(
+          'Cloudinary is not configured. Please provide CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in the server environment.'
+        )
+      );
+    }
+
+    if (!buffer || !Buffer.isBuffer(buffer)) {
+      return reject(new Error('Invalid PDF buffer provided for upload.'));
+    }
+
+    const cleanPublicId = filename ? filename.replace(/\.pdf$/i, '') : `invoice-${Date.now()}`;
+
+    const uploadOptions = {
+      folder: customFolder || 'vista-holidays/invoices',
+      resource_type: 'raw',
+      public_id: `${cleanPublicId}.pdf`,
+      overwrite: true
+    };
+
+    const uploadStream = cloudinary.uploader.upload_stream(
+      uploadOptions,
+      (error, result) => {
+        if (error) {
+          return reject(new Error(`Cloudinary PDF upload failed: ${error.message}`));
+        }
+        if (!result) {
+          return reject(new Error('Cloudinary PDF upload returned an empty response.'));
+        }
+
+        resolve({
+          secureUrl: result.secure_url,
+          publicId: result.public_id,
+          format: result.format || 'pdf',
+          bytes: result.bytes
+        });
+      }
+    );
+
+    uploadStream.end(buffer);
+  });
+};
+
+/**
  * Delete an image from Cloudinary by its publicId
  * @param {string} publicId - Cloudinary asset public ID
  * @returns {Promise<{ success: boolean, result?: string, error?: string }>}
@@ -116,5 +169,7 @@ export const deleteImageByPublicId = async (publicId) => {
 export default {
   isCloudinaryConfigured,
   uploadImageBuffer,
+  uploadPdfBuffer,
   deleteImageByPublicId
 };
+
