@@ -20,7 +20,8 @@ import {
   buildContactAdminNotification,
   buildFeedbackAdminNotification,
   buildBookingConfirmationEmail,
-  buildBookingAdminNotification
+  buildBookingAdminNotification,
+  buildLoginOtpEmail
 } from './emails/templates/index.js';
 
 let transporter = null;
@@ -474,6 +475,28 @@ export const sendAdminBookingNotification = async ({
   });
 };
 
+/**
+  * Send user sign-in OTP email
+  */
+export const sendLoginOtpEmail = async ({ toEmail, userName, otp, expiresMinutes = 5 }) => {
+  const clientUrl = getPrimaryClientUrl();
+  const { subject, html, text } = buildLoginOtpEmail({
+    toEmail,
+    userName,
+    otp,
+    expiresMinutes,
+    clientUrl
+  });
+
+  return deliverMail({
+    to: toEmail,
+    subject,
+    html,
+    text,
+    logCategory: 'USER_LOGIN_OTP'
+  });
+};
+
 export default {
   sendVerificationEmail,
   sendWelcomeEmail,
@@ -488,6 +511,7 @@ export default {
   sendAdminFeedbackNotification,
   sendFeedbackAdminNotification,
   sendBookingConfirmationEmail,
-  sendAdminBookingNotification
+  sendAdminBookingNotification,
+  sendLoginOtpEmail
 };
 

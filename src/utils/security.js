@@ -34,6 +34,35 @@ export const hashVerificationToken = (rawToken) => {
   return crypto.createHash('sha256').update(rawToken).digest('hex');
 };
 
+const OTP_LIFETIME_MINUTES = 5;
+
+/**
+ * Generate a cryptographically secure 6-digit numeric OTP for login.
+ * Returns rawOtp (to send via email), hashedOtp (for DB storage), and expiration Date.
+ */
+export const generateLoginOtp = () => {
+  const rawOtp = crypto.randomInt(100000, 1000000).toString();
+  const hashedOtp = hashOtp(rawOtp);
+  const expiresAt = new Date(Date.now() + OTP_LIFETIME_MINUTES * 60 * 1000);
+
+  return {
+    rawOtp,
+    hashedOtp,
+    expiresAt,
+    expiresMinutes: OTP_LIFETIME_MINUTES
+  };
+};
+
+/**
+ * Hash an OTP using SHA-256 for secure DB storage and verification
+ */
+export const hashOtp = (rawOtp) => {
+  if (!rawOtp || typeof rawOtp !== 'string') {
+    return '';
+  }
+  return crypto.createHash('sha256').update(rawOtp.trim()).digest('hex');
+};
+
 /**
  * Securely hash a user password using bcrypt with strong salt rounds
  */
@@ -111,6 +140,8 @@ export const getPrimaryClientUrl = () => {
 export default {
   generateVerificationToken,
   hashVerificationToken,
+  generateLoginOtp,
+  hashOtp,
   hashPassword,
   comparePassword,
   signJwtToken,

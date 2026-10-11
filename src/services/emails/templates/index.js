@@ -17,4 +17,5 @@ export {
 } from './adminNotificationTemplate.js';
 export { buildBookingConfirmationEmail } from './bookingConfirmationTemplate.js';
 export { buildBookingAdminNotification } from './bookingAdminNotificationTemplate.js';
+export { buildLoginOtpEmail } from './loginOtpTemplate.js';
 

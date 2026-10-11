@@ -59,6 +59,24 @@ const userSchema = new mongoose.Schema(
       select: false,
       index: true
     },
+    loginOtpHash: {
+      type: String,
+      default: null,
+      select: false,
+      index: true
+    },
+    loginOtpExpiresAt: {
+      type: Date,
+      default: null
+    },
+    loginOtpAttempts: {
+      type: Number,
+      default: 0
+    },
+    loginOtpLastSentAt: {
+      type: Date,
+      default: null
+    },
     welcomeEmailSent: {
       type: Boolean,
       default: false
@@ -154,6 +172,7 @@ userSchema.set('toJSON', {
     delete ret.passwordHash;
     delete ret.emailVerificationTokenHash;
     delete ret.lastVerifiedTokenHash;
+    delete ret.loginOtpHash;
     delete ret.__v;
     ret.id = ret._id.toString();
     return ret;

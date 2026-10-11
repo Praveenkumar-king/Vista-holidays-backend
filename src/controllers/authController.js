@@ -3,6 +3,8 @@ import PlatformSetting from '../models/PlatformSetting.js';
 import { 
   generateVerificationToken, 
   hashVerificationToken, 
+  generateLoginOtp,
+  hashOtp,
   hashPassword, 
   signJwtToken,
   validatePasswordPolicy,
@@ -487,6 +489,244 @@ export const acceptTerms = async (req, res) => {
   }
 };
 
+/**
+ * Send Sign-In OTP
+ * POST /api/auth/send-otp
+ */
+export const sendLoginOtp = async (req, res) => {
+  try {
+    if (!isDatabaseConnected()) {
+      return errorResponse(res, 'Database service is currently unavailable. Please try again later.', null, 503);
+    }
+
+    const { email } = req.body;
+
+    if (!email || typeof email !== 'string' || !email.trim()) {
+      return errorResponse(res, 'Please provide an email address.', null, 400);
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(normalizedEmail)) {
+      return errorResponse(res, 'Please provide a valid email address.', null, 400);
+    }
+
+    // Check Maintenance Mode
+    const platformSettings = await PlatformSetting.getSettings();
+    if (platformSettings.maintenanceMode) {
+      return res.status(503).json({
+        success: false,
+        code: 'MAINTENANCE_MODE',
+        message: platformSettings.maintenanceMessage || 'System under maintenance. User login is temporarily disabled. Please check the platform notification bar for updates.'
+      });
+    }
+
+    // Find user
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      return errorResponse(res, 'No account found with this email address. Please register first.', null, 404);
+    }
+
+    // Check email verification status
+    if (!user.emailVerified) {
+      return res.status(403).json({
+        success: false,
+        unverified: true,
+        email: user.email,
+        message: 'Please verify your email before signing in.'
+      });
+    }
+
+    // Check account status
+    if (user.accountStatus !== 'active') {
+      return errorResponse(res, 'Your account is suspended or inactive. Please contact customer support.', null, 403);
+    }
+
+    // Rate-limiting cooldown: prevent spamming resend within 45 seconds
+    if (user.loginOtpLastSentAt) {
+      const secondsSinceLastOtp = (Date.now() - new Date(user.loginOtpLastSentAt).getTime()) / 1000;
+      if (secondsSinceLastOtp < 45) {
+        const remainingSeconds = Math.ceil(45 - secondsSinceLastOtp);
+        return res.status(429).json({
+          success: false,
+          code: 'COOLDOWN_ACTIVE',
+          remainingSeconds,
+          message: `Please wait ${remainingSeconds} second${remainingSeconds === 1 ? '' : 's'} before requesting another OTP.`
+        });
+      }
+    }
+
+    // Generate secure 6-digit OTP
+    const { rawOtp, hashedOtp, expiresAt, expiresMinutes } = generateLoginOtp();
+
+    user.loginOtpHash = hashedOtp;
+    user.loginOtpExpiresAt = expiresAt;
+    user.loginOtpAttempts = 0;
+    user.loginOtpLastSentAt = new Date();
+    await user.save();
+
+    // Send OTP via email
+    try {
+      await emailService.sendLoginOtpEmail({
+        toEmail: user.email,
+        userName: user.name,
+        otp: rawOtp,
+        expiresMinutes
+      });
+    } catch (emailErr) {
+      logger.error('Failed to send login OTP email:', emailErr.message);
+      return errorResponse(res, 'Failed to deliver OTP email. Please try again.', null, 500);
+    }
+
+    logger.info(`Login OTP sent successfully to: ${user.email}`);
+
+    return successResponse(res, `OTP has been sent to ${user.email}. Please check your inbox.`, {
+      email: user.email,
+      expiresInMinutes: expiresMinutes
+    });
+  } catch (error) {
+    logger.error('Send OTP error:', error.message);
+    return errorResponse(res, 'Failed to process OTP request. Please try again.', error.message, 500);
+  }
+};
+
+/**
+ * Verify Sign-In OTP and log in
+ * POST /api/auth/verify-otp
+ */
+export const verifyLoginOtp = async (req, res) => {
+  try {
+    if (!isDatabaseConnected()) {
+      return errorResponse(res, 'Database service is currently unavailable. Please try again later.', null, 503);
+    }
+
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return errorResponse(res, 'Please provide both email and OTP code.', null, 400);
+    }
+
+    const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    const trimmedOtp = typeof otp === 'string' ? otp.trim() : String(otp).trim();
+
+    if (!/^\d{6}$/.test(trimmedOtp)) {
+      return errorResponse(res, 'Please provide a valid 6-digit numeric OTP code.', null, 400);
+    }
+
+    // Query user including loginOtpHash
+    const user = await User.findOne({ email: normalizedEmail }).select('+loginOtpHash');
+
+    if (!user) {
+      return errorResponse(res, 'Invalid email or OTP.', null, 401);
+    }
+
+    // Enforce Maintenance Mode: allow administrators, block normal users
+    const platformSettings = await PlatformSetting.getSettings();
+    if (platformSettings.maintenanceMode && user.role !== 'admin') {
+      return res.status(503).json({
+        success: false,
+        code: 'MAINTENANCE_MODE',
+        message: platformSettings.maintenanceMessage || 'System under maintenance. Normal user login is temporarily disabled. Please check the platform notification bar for updates.'
+      });
+    }
+
+    // Check email verification status
+    if (!user.emailVerified) {
+      return res.status(403).json({
+        success: false,
+        unverified: true,
+        email: user.email,
+        message: 'Please verify your email before signing in.'
+      });
+    }
+
+    // Check account status
+    if (user.accountStatus !== 'active') {
+      return errorResponse(res, 'Your account is suspended or inactive. Please contact customer support.', null, 403);
+    }
+
+    // Check if an OTP was ever issued
+    if (!user.loginOtpHash || !user.loginOtpExpiresAt) {
+      return res.status(400).json({
+        success: false,
+        code: 'NO_ACTIVE_OTP',
+        message: 'No active OTP found. Please request a new OTP.'
+      });
+    }
+
+    // Check if OTP has expired
+    if (new Date() > new Date(user.loginOtpExpiresAt)) {
+      user.loginOtpHash = null;
+      user.loginOtpExpiresAt = null;
+      user.loginOtpAttempts = 0;
+      await user.save();
+      return res.status(400).json({
+        success: false,
+        code: 'EXPIRED_OTP',
+        message: 'This OTP has expired. Please request a new OTP.'
+      });
+    }
+
+    // Check maximum attempts limit (e.g. 5 attempts)
+    if ((user.loginOtpAttempts || 0) >= 5) {
+      user.loginOtpHash = null;
+      user.loginOtpExpiresAt = null;
+      user.loginOtpAttempts = 0;
+      await user.save();
+      return res.status(429).json({
+        success: false,
+        code: 'EXCESSIVE_ATTEMPTS',
+        message: 'Too many incorrect attempts. For security, this OTP has been invalidated. Please request a new OTP.'
+      });
+    }
+
+    // Verify OTP hash
+    const candidateHash = hashOtp(trimmedOtp);
+    if (candidateHash !== user.loginOtpHash) {
+      user.loginOtpAttempts = (user.loginOtpAttempts || 0) + 1;
+      const remaining = 5 - user.loginOtpAttempts;
+      await user.save();
+      return res.status(400).json({
+        success: false,
+        code: 'INCORRECT_OTP',
+        message: remaining > 0
+          ? `Incorrect OTP. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`
+          : 'Too many incorrect attempts. Please request a new OTP.'
+      });
+    }
+
+    // Successful verification: invalidate OTP to prevent replay attacks
+    user.loginOtpHash = null;
+    user.loginOtpExpiresAt = null;
+    user.loginOtpAttempts = 0;
+    user.loginOtpLastSentAt = null;
+    user.lastLoginAt = new Date();
+    await user.save();
+
+    // Generate JWT token
+    const token = signJwtToken({
+      userId: user._id,
+      email: user.email
+    });
+
+    // Set secure HttpOnly cookie
+    res.cookie(AUTH_COOKIE_NAME, token, getCookieOptions());
+
+    const safeUser = user.toSafeObject();
+
+    logger.info(`User logged in successfully via OTP: ${user.email}`);
+
+    return successResponse(res, `Welcome back, ${user.name}!`, {
+      user: safeUser,
+      token
+    });
+  } catch (error) {
+    logger.error('Verify OTP error:', error.message);
+    return errorResponse(res, 'OTP verification failed due to an internal error. Please try again.', error.message, 500);
+  }
+};
+
 export default {
   register,
   verifyEmail,
@@ -494,5 +734,7 @@ export default {
   login,
   logout,
   getCurrentUser,
-  acceptTerms
+  acceptTerms,
+  sendLoginOtp,
+  verifyLoginOtp
 };

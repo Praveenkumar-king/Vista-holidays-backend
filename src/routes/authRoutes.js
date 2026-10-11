@@ -6,16 +6,20 @@ import {
   login,
   logout,
   getCurrentUser,
-  acceptTerms
+  acceptTerms,
+  sendLoginOtp,
+  verifyLoginOtp
 } from '../controllers/authController.js';
 import { authenticate } from '../middleware/authenticate.js';
-import { loginLimiter, resendLimiter, registerLimiter } from '../middleware/rateLimiter.js';
+import { loginLimiter, resendLimiter, registerLimiter, sendOtpLimiter, verifyOtpLimiter } from '../middleware/rateLimiter.js';
 
 const router = Router();
 
 // Public routes
 router.post('/register', registerLimiter, register);
 router.post('/login', loginLimiter, login);
+router.post('/send-otp', sendOtpLimiter, sendLoginOtp);
+router.post('/verify-otp', verifyOtpLimiter, verifyLoginOtp);
 router.post('/logout', logout);
 router.get('/verify-email', verifyEmail);
 router.post('/resend-verification', resendLimiter, resendVerification);
